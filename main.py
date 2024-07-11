@@ -415,3 +415,35 @@ find_matches(model,
              query="dogs on the grass",
              image_filenames=valid_df['image'].values,
              n=9)
+
+# Pruning the model
+import torch.nn.utils.prune as prune
+
+for module in model.modules():
+    if isinstance(module, torch.nn.Linear):
+        prune.l1_unstructured(module, name='weight', amount=0.2)
+
+def calculate_valid_loss():
+    _, valid_df = make_train_valid_dfs()
+    tokenizer = DistilBertTokenizer.from_pretrained(CFG.text_tokenizer)
+    valid_loader = build_loaders(valid_df, tokenizer, mode="valid")
+
+
+    model = CLIPModel().to(CFG.device)
+    step = "epoch"
+
+    best_loss = float('inf')
+    for epoch in range(CFG.epochs):
+        print(f"Epoch: {epoch + 1}")
+        model.eval()
+        with torch.no_grad():
+            valid_loss = valid_epoch(model, valid_loader)
+
+        if valid_loss.avg < best_loss:
+            best_loss = valid_loss.avg
+            
+        lr_scheduler.step(valid_loss.avg)
+    return best_loss;
+
+loss = calculate_valid_loss()
+print(loss)
