@@ -417,17 +417,18 @@ find_matches(model,
 # Pruning the model
 import torch.nn.utils.prune as prune
 
-for module in model.modules():
+pruned_model = model
+for module in pruned_model.modules():
     if isinstance(module, torch.nn.Linear):
         prune.l1_unstructured(module, name='weight', amount=0.2)
 
-def calculate_valid_loss():
+torch.save(model.state_dict(), "model_before_pruning.pth")
+torch.save(pruned_model.state_dict(), "model_after_pruning.pth")
+
+def calculate_valid_loss(model):
     _, valid_df = make_train_valid_dfs()
     tokenizer = DistilBertTokenizer.from_pretrained(CFG.text_tokenizer)
     valid_loader = build_loaders(valid_df, tokenizer, mode="valid")
-
-
-    model = CLIPModel().to(CFG.device)
     step = "epoch"
 
     best_loss = float('inf')
@@ -443,5 +444,18 @@ def calculate_valid_loss():
         lr_scheduler.step(valid_loss.avg)
     return best_loss;
 
-loss = calculate_valid_loss()
-print(loss)
+def calculate_inference_time(model):
+    start_time = time.time()
+    loss = calculate_valid_loss(model)
+    end_time = time.time()
+
+inference_time_before = calculate_inference_time(model)
+inference_time_after = calculate_inference_time(pruned_model)
+
+print(f"Inference time before pruning: {inference_time_before:.6f} seconds")
+size_before = os.path.getsize("model_before_pruning.pth")
+print(f"Size before pruning: {size_before / 1e6:.2f} MB")
+
+print(f"Inference time after pruning: {inference_time_after:.6f} seconds")
+size_after = os.path.getsize("model_after_pruning.pth")
+print(f"Size after pruning: {size_after / 1e6:.2f} MB")
