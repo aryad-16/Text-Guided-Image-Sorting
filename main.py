@@ -448,14 +448,18 @@ def calculate_inference_time(model):
     start_time = time.time()
     loss = calculate_valid_loss(model)
     end_time = time.time()
+    inference_time = end_time - start_time
+    return inference_time, loss
 
-inference_time_before = calculate_inference_time(model)
-inference_time_after = calculate_inference_time(pruned_model)
+inference_time_before, loss_before = calculate_inference_time(model)
+inference_time_after, loss_after  = calculate_inference_time(pruned_model)
 
 print(f"Inference time before pruning: {inference_time_before:.6f} seconds")
+print(f"Validation loss before pruning: {loss_before:.6f}")
 size_before = os.path.getsize("model_before_pruning.pth")
 print(f"Size before pruning: {size_before / 1e6:.2f} MB")
 
 print(f"Inference time after pruning: {inference_time_after:.6f} seconds")
+print(f"Validation loss after pruning: {loss_after:.6f}")
 size_after = os.path.getsize("model_after_pruning.pth")
 print(f"Size after pruning: {size_after / 1e6:.2f} MB")
